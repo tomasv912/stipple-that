@@ -56,7 +56,9 @@
   .ctrl-header{display:flex;align-items:center;justify-content:space-between}
   .ctrl-header label{font-size:12px;color:var(--content-secondary)}
   .slider-row{display:flex;align-items:center;gap:8px}
-  .slider-val{font-family:var(--font-mono);font-size:11px;color:var(--content-muted);min-width:32px;text-align:right;font-variant-numeric:tabular-nums}
+  .slider-val{font-family:var(--font-mono);font-size:11px;color:var(--content-muted);min-width:32px;text-align:right;font-variant-numeric:tabular-nums;cursor:default}
+  .slider-val.editable{cursor:text}
+  .slider-val-input{font-family:var(--font-mono);font-size:11px;color:var(--content-primary);background:var(--fill-strong);border:1px solid var(--content-accent);border-radius:4px;padding:0 4px;width:56px;text-align:right;outline:none;font-variant-numeric:tabular-nums}
   input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:2px;border-radius:2px;background:var(--fill-strong);outline:none;cursor:pointer}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--content-primary);cursor:pointer}
   input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:var(--content-primary);cursor:pointer;border:none}
@@ -202,7 +204,7 @@
             <label class="check-row">
               <input type="checkbox" id="chk-uniform">
               <span class="check-box"></span>
-              <span class="label-text" data-i18n="uniform">Tamaño único</span>
+              <span class="label-text" data-i18n="uniform">Tamaños variables</span>
             </label>
           </div>
           <div class="ctrl">
@@ -380,7 +382,7 @@
 
 <script>
 // ── i18n ──────────────────────────────────────────────────────────
-const i18n={esp:{upload:'Subir',points:'Puntos',maxr:'Radio máx',minr:'Radio mín',uniform:'Tamaño único',contrast:'Contraste',threshold:'Threshold',order:'Orden',colormode:'Modo de color',duotonelabel:'Colores',reds:'Rojos',oranges:'Naranjas',yellows:'Amarillos',greens:'Verdes',cyans:'Cyanes',blues:'Azules',magentas:'Magentas',disablebw:'Desactivar Blanco y Negro',addcolor:'+ color',palhint:'clic para cambiar · clic derecho para eliminar · de oscuro a claro',random:'Aleatorio',grid:'Grilla',scanline:'Scanline',spiral:'Espiral',radial:'Radial',photo:'Foto',bw:'B&W density',mono:'Monocromo',duotone:'Duotono',flat:'Flat',bwsel:'BW+selected',gradmap:'Paleta',sequence:'Sequence',droptext:'Soltá o hacé click para subir',dropsub:'Imagen (JPG, PNG, WebP) o video (MP4, WebM)',ready:'listo — subí una imagen o video para empezar'},eng:{upload:'Upload',points:'Points',maxr:'Max radius',minr:'Min radius',uniform:'Uniform size',contrast:'Contrast',threshold:'Threshold',order:'Order',colormode:'Color mode',duotonelabel:'Colors',reds:'Reds',oranges:'Oranges',yellows:'Yellows',greens:'Greens',cyans:'Cyans',blues:'Blues',magentas:'Magentas',disablebw:'Disable Black & White',addcolor:'+ color',palhint:'click to change · right-click to remove · dark to light',random:'Random',grid:'Grid',scanline:'Scanline',spiral:'Spiral',radial:'Radial',photo:'Photo',bw:'B&W density',mono:'Monochrome',duotone:'Duotone',flat:'Flat',bwsel:'BW+selected',gradmap:'Palette',sequence:'Sequence',droptext:'Drop or click to upload',dropsub:'Image (JPG, PNG, WebP) or video (MP4, WebM)',ready:'ready — upload an image or video to start'}};
+const i18n={esp:{upload:'Subir',points:'Puntos',maxr:'Radio máx',minr:'Radio mín',uniform:'Tamaños variables',contrast:'Contraste',threshold:'Threshold',order:'Orden',colormode:'Modo de color',duotonelabel:'Colores',reds:'Rojos',oranges:'Naranjas',yellows:'Amarillos',greens:'Verdes',cyans:'Cyanes',blues:'Azules',magentas:'Magentas',disablebw:'Desactivar Blanco y Negro',addcolor:'+ color',palhint:'clic para cambiar · clic derecho para eliminar · de oscuro a claro',random:'Aleatorio',grid:'Grilla',scanline:'Scanline',spiral:'Espiral',radial:'Radial',photo:'Foto',bw:'B&W density',mono:'Monocromo',duotone:'Duotono',flat:'Flat',bwsel:'BW+selected',gradmap:'Paleta',sequence:'Sequence',droptext:'Soltá o hacé click para subir',dropsub:'Imagen (JPG, PNG, WebP) o video (MP4, WebM)',ready:'listo — subí una imagen o video para empezar'},eng:{upload:'Upload',points:'Points',maxr:'Max radius',minr:'Min radius',uniform:'Variable sizes',contrast:'Contrast',threshold:'Threshold',order:'Order',colormode:'Color mode',duotonelabel:'Colors',reds:'Reds',oranges:'Oranges',yellows:'Yellows',greens:'Greens',cyans:'Cyans',blues:'Blues',magentas:'Magentas',disablebw:'Disable Black & White',addcolor:'+ color',palhint:'click to change · right-click to remove · dark to light',random:'Random',grid:'Grid',scanline:'Scanline',spiral:'Spiral',radial:'Radial',photo:'Photo',bw:'B&W density',mono:'Monochrome',duotone:'Duotone',flat:'Flat',bwsel:'BW+selected',gradmap:'Palette',sequence:'Sequence',droptext:'Drop or click to upload',dropsub:'Image (JPG, PNG, WebP) or video (MP4, WebM)',ready:'ready — upload an image or video to start'}};
 let currentLang='esp';
 function setLang(lang){currentLang=lang;const tbl=i18n[lang];document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(tbl[k]!==undefined)el.textContent=tbl[k]});document.querySelectorAll('[data-i18n-opt]').forEach(opt=>{const k=opt.getAttribute('data-i18n-opt');if(tbl[k]!==undefined)opt.textContent=tbl[k]});document.getElementById('lang-esp').classList.toggle('active',lang==='esp');document.getElementById('lang-eng').classList.toggle('active',lang==='eng');if(!mediaLoaded)statusEl.textContent=tbl.ready;}
 function tr(k){return i18n[currentLang][k]||k;}
@@ -628,6 +630,7 @@ function getV(id){return parseFloat(document.getElementById(id).value);}
 
 // Always reads from slider (sliders are kept in sync with KF interpolation on seek)
 function getParam(param){
+  if(param==='count' && countOverride!==null) return countOverride;
   return parseFloat(document.getElementById(sliderIds[param]).value);
 }
 
@@ -642,7 +645,42 @@ function sliderInput(param, formatFn){
     scheduleRender();
   };
 }
-document.getElementById('sl-count').addEventListener('input', sliderInput('count', v=>Math.round(v)));
+document.getElementById('sl-count').addEventListener('input', e=>{
+  countOverride=null;
+  const v=Math.round(+e.target.value);
+  document.getElementById('lbl-count').textContent=v.toLocaleString();
+  if(isVideo&&mediaLoaded&&kfs['count'].length>0) insertKF('count',srcV.currentTime,v);
+  scheduleRender();
+});
+
+// Double-click on points label → inline edit (allows values beyond slider max)
+let countOverride = null;
+function attachCountDblClick(lbl){
+  lbl.classList.add('editable');
+  lbl.addEventListener('dblclick', function openEdit(){
+    const current = countOverride ?? Math.round(parseFloat(document.getElementById('sl-count').value));
+    const inp = document.createElement('input');
+    inp.type='number'; inp.min='1'; inp.step='100'; inp.value=current; inp.className='slider-val-input';
+    lbl.replaceWith(inp); inp.select();
+    let committed = false;
+    function commit(){
+      if(committed) return; committed=true;
+      const v = Math.max(1, Math.round(+inp.value)||current);
+      lbl.textContent = v.toLocaleString();
+      inp.replaceWith(lbl);
+      countOverride = v > 50000 ? v : null;
+      document.getElementById('sl-count').value = Math.min(v, 50000);
+      if(isVideo && mediaLoaded && kfs['count'].length>0) insertKF('count', srcV.currentTime, v);
+      scheduleRender();
+    }
+    inp.addEventListener('blur', commit);
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){e.preventDefault();inp.blur();}
+      if(e.key==='Escape'){committed=true;inp.replaceWith(lbl);}
+    });
+  });
+}
+attachCountDblClick(document.getElementById('lbl-count'));
 document.getElementById('sl-maxr').addEventListener('input', sliderInput('maxr', v=>v.toFixed(1)));
 document.getElementById('sl-minr').addEventListener('input', sliderInput('minr', v=>v.toFixed(1)));
 document.getElementById('sl-gamma').addEventListener('input', sliderInput('gamma', v=>v.toFixed(2)));
@@ -655,7 +693,8 @@ document.getElementById('sel-color').addEventListener('change',()=>{
   document.getElementById('wrap-duotone').style.display=v==='duotone'?'flex':'none';
   scheduleRender();
 });
-chkUniform.addEventListener('change',()=>{wrapMinR.style.opacity=chkUniform.checked?'0.3':'1';scheduleRender();});
+chkUniform.addEventListener('change',()=>{wrapMinR.style.opacity=chkUniform.checked?'1':'0.3';scheduleRender();});
+wrapMinR.style.opacity='0.3'; // starts unchecked = uniform = minR dimmed
 document.getElementById('chk-extract').addEventListener('change',scheduleRender);
 document.getElementById('duo-color-1').addEventListener('input',e=>{document.getElementById('duo-swatch-1').style.background=e.target.value;scheduleRender();});
 document.getElementById('duo-color-2').addEventListener('input',e=>{document.getElementById('duo-swatch-2').style.background=e.target.value;scheduleRender();});
@@ -714,7 +753,7 @@ function render(){
   const imgData=srcC.getContext('2d').getImageData(0,0,sw,sh).data;
   const count=Math.round(getParam('count')),maxR=getParam('maxr'),minR=getParam('minr'),gamma=getParam('gamma'),threshold=getParam('threshold');
   const order=document.getElementById('sel-order').value,cmode=document.getElementById('sel-color').value;
-  const uniform=chkUniform.checked,dotHex='#111111',bgHex='#ffffff',bgRgb=[255,255,255];
+  const uniform=!chkUniform.checked,dotHex='#111111',bgHex='#ffffff',bgRgb=[255,255,255];
   outC.width=sw;outC.height=sh;
   const ctx=outC.getContext('2d');ctx.fillStyle=bgHex;ctx.fillRect(0,0,sw,sh);
   lastDots=[];lastW=sw;lastH=sh;lastBg=bgHex;
@@ -749,7 +788,7 @@ async function exportSequence(){
   const sw=srcV.videoWidth,sh=srcV.videoHeight;tmp.width=sw;tmp.height=sh;
   const tctx=tmp.getContext('2d');
   const order=document.getElementById('sel-order').value,cmode=document.getElementById('sel-color').value;
-  const uniform=chkUniform.checked,dotHex='#111111',selHues=getSelectedHues();
+  const uniform=!chkUniform.checked,dotHex='#111111',selHues=getSelectedHues();
   const extractOnly=document.getElementById('chk-extract').checked;
   const bgRgb=[255,255,255];
   for(let f=0;f<total;f++){
