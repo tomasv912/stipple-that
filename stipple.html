@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stipple</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#050505}
+  :root{
+    --font-sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Helvetica,Arial,sans-serif;
+    --font-mono:"SF Mono","Fira Mono","Courier New",monospace;
+    --bg:#050505;--border:#454545;--border-light:rgba(255,255,255,0.2);
+    --text:#ffffff;--text-dim:rgba(255,255,255,0.5);--surface:rgba(255,255,255,0.02);
+  }
+  body{font-family:var(--font-sans);display:flex;flex-direction:column;height:100%;color:var(--text);background:var(--bg)}
+  .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  .content-row{display:flex;flex-direction:row;flex:1;overflow:hidden;min-height:0}
+
+  /* ── Sidebar ── */
+  .sidebar{width:336px;flex-shrink:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;padding:48px 0;border-right:0.5px solid var(--border-light);background:var(--surface)}
+  .sidebar-inner{display:flex;flex-direction:column;gap:48px;width:240px}
+  .btn-upload{width:100%;padding:16px 8px;background:#fff;color:#050505;border:0.5px solid var(--border);border-radius:8px;font-family:var(--font-sans);font-size:14px;cursor:pointer;text-align:center;transition:background .1s}
+  .btn-upload:hover{background:#e0e0e0}
+
+  /* Sliders */
+  .ctrl{display:flex;flex-direction:column;gap:4px}
+  .ctrl-header{display:flex;align-items:center;justify-content:space-between}
+  .ctrl-header label{font-size:12px;color:var(--text)}
+  .slider-row{display:flex;align-items:center;gap:8px}
+  .slider-val{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);min-width:32px;text-align:right}
+  input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:2px;border-radius:2px;background:var(--border);outline:none;cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#fff;cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#fff;cursor:pointer;border:none}
+
+  /* Keyframe add button (diamond next to label) */
+  .kf-add-btn{display:none;width:10px;height:10px;padding:0;background:none;border:none;cursor:pointer;flex-shrink:0;align-items:center;justify-content:center}
+  .kf-add-btn svg{display:block}
+  .kf-add-btn .kf-diamond-fill{fill:transparent;transition:fill .1s}
+  .kf-add-btn .kf-diamond-stroke{stroke:rgba(255,255,255,0.5);transition:stroke .1s}
+  .kf-add-btn:hover .kf-diamond-stroke{stroke:#fff}
+  .kf-add-btn.kf-active .kf-diamond-fill{fill:#fff}
+  .kf-add-btn.kf-active .kf-diamond-stroke{stroke:#fff}
+  .video-loaded .kf-add-btn{display:flex}
+
+  /* Custom checkbox */
+  .check-row{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+  .check-row input[type=checkbox]{display:none}
+  .check-box{position:relative;width:8px;height:8px;border-radius:2px;border:0.5px solid var(--border);background:transparent;flex-shrink:0}
+  .check-box::after{content:'';position:absolute;display:none;left:1.5px;top:-0.5px;width:3px;height:5.5px;border:1.5px solid #050505;border-top:none;border-left:none;transform:rotate(45deg)}
+  .check-row input[type=checkbox]:checked~.check-box{background:#fff}
+  .check-row input[type=checkbox]:checked~.check-box::after{display:block}
+  .check-row input[type=checkbox]:checked~.label-text{color:var(--text)}
+  .check-row span.label-text{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;white-space:nowrap;transition:color .1s}
+  .hue-chip .check-box{background:transparent}
+  .hue-chip.active .check-box{background:#fff}
+  .hue-chip.active .check-box::after{display:block}
+  .hue-chip.active .label-text{color:var(--text)}
+
+  /* Select */
+  .select-wrap{display:flex;flex-direction:column;gap:12px}
+  .select-label{font-size:12px;color:var(--text)}
+  .select-box{position:relative;width:100%}
+  .select-box select{width:100%;appearance:none;-webkit-appearance:none;background:var(--surface);border:0.5px solid var(--border);border-radius:2px;padding:8px 28px 8px 8px;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;cursor:pointer;outline:none}
+  .select-box select:focus{border-color:rgba(255,255,255,.3)}
+  .select-box select option{background:#1a1a1a;color:#fff;text-transform:uppercase}
+  .select-arrow{position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;display:flex;align-items:center}
+  .hue-grid{display:grid;grid-template-columns:repeat(3,auto);gap:10px}
+  .duo-swatches{display:flex;gap:8px;align-items:center}
+  .duo-swatch{position:relative;width:28px;height:28px;border-radius:4px;border:0.5px solid var(--border);overflow:hidden;flex-shrink:0;cursor:pointer}
+  .duo-swatch input[type=color]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:none}
+  #palette-swatches{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+  #palette-add{font-family:var(--font-mono);font-size:10px;padding:4px 8px;background:transparent;border:0.5px solid var(--border);border-radius:2px;color:var(--text-dim);cursor:pointer;text-transform:uppercase}
+  #palette-add:hover{background:rgba(255,255,255,.05)}
+  .pal-hint{font-size:9px;color:var(--border);font-family:var(--font-mono);line-height:1.4;margin-top:4px}
+  .lang-switcher{display:flex;gap:12px;align-items:center}
+  .lang-btn{font-family:var(--font-sans);font-size:12px;color:var(--text-dim);background:none;border:none;cursor:pointer;padding:0;transition:color .1s}
+  .lang-btn.active{color:var(--text)}
+
+  /* ── Canvas ── */
+  .canvas-area{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg)}
+  .drop-zone{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;cursor:pointer}
+  .drop-icon{width:96px;height:96px;display:flex;align-items:center;justify-content:center}
+  .drop-icon img{width:64px;height:64px;object-fit:contain;opacity:.7}
+  .drop-texts{display:flex;flex-direction:column;gap:8px;text-align:center}
+  .drop-text{font-size:20px;color:var(--text)}
+  .drop-sub{font-size:12px;color:var(--border)}
+  canvas#out{display:none;max-width:100%;max-height:100%;object-fit:contain}
+  canvas#src{display:none}
+  video#srcv{display:none}
+
+  /* ── Export panel ── */
+  .export-panel{width:260px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:48px}
+  .export-btns{display:flex;flex-direction:column;gap:12px;width:100%}
+  .btn-export{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 8px;background:transparent;color:var(--text);border:0.5px solid var(--border);border-radius:8px;font-family:var(--font-sans);font-size:14px;cursor:pointer;white-space:nowrap;transition:background .1s}
+  .btn-export:hover{background:rgba(255,255,255,.05)}
+  .btn-export-icon{width:9px;height:11px;object-fit:contain;flex-shrink:0}
+
+  /* ── Bottom bar ── */
+  .video-bar{display:none;align-items:center;gap:8px;padding:6px 14px;border-top:0.5px solid var(--border);background:var(--bg);flex-shrink:0}
+  .video-bar.visible{display:flex}
+  .play-btn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;min-width:28px;padding:0;border-radius:50%;background:transparent;border:0.5px solid var(--border);color:var(--text);cursor:pointer;flex-shrink:0}
+  .play-btn:hover{background:rgba(255,255,255,.05)}
+  .vtime{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0;min-width:30px}
+  #vbar-seek{flex:1;margin:0}
+
+  /* ── Keyframe tracks ── */
+  .kf-panel{display:none;flex-direction:column;gap:0;border-top:0.5px solid var(--border);background:var(--bg);flex-shrink:0;padding:4px 0;user-select:none}
+  .kf-panel.visible{display:flex}
+  .kf-row{display:flex;align-items:center;height:14px;padding:0 14px}
+  .kf-row-lbl{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);text-transform:uppercase;width:28px;flex-shrink:0;margin-right:8px;text-align:right;line-height:14px}
+  /* spacer to align lane with seekbar: matches play(28)+gap(8)+vtime(30)+gap(8) = 74px but we already have 14px padding + 28+8 label = we need 28+8 gap right of label to match seekbar left edge from play btn start */
+  .kf-row-spacer{width:38px;flex-shrink:0}/* play(28)+gap(8) + vtime starts; after label+margin we're at 14+28+8+8+30 offset, seekbar starts at 14+28+8+30+8=88. label area=28+8=36. spacer needed=88-14(padding)-36=38 */
+  .kf-lane{flex:1;position:relative;height:14px;cursor:pointer}
+  .kf-lane::before{content:'';position:absolute;left:0;right:0;top:50%;height:0.5px;background:var(--border);transform:translateY(-50%)}
+  .kf-spacer-right{width:38px;flex-shrink:0}/* matches vtime-dur width + gap */
+  .kf-diamond{position:absolute;top:50%;transform:translate(-50%,-50%) rotate(45deg);width:6px;height:6px;background:#fff;border-radius:1px;cursor:grab;z-index:2;transition:background .1s;user-select:none}
+  .kf-diamond:hover{background:rgba(255,255,255,0.7)}
+  .kf-diamond.selected{background:#FFD600}
+  .kf-diamond.selected:hover{background:#ffe94d}
+  .kf-cursor-line{position:absolute;top:0;bottom:0;width:0.5px;background:rgba(255,255,255,0.4);pointer-events:none;z-index:3}
+  .kf-select-box{position:absolute;border:1px solid #FFD600;background:rgba(255,214,0,0.08);pointer-events:none;z-index:10}
+  .kf-tracks-wrap{position:relative}
+  .kf-global-cursor{position:absolute;top:0;bottom:0;width:0.5px;background:rgba(255,255,255,0.35);pointer-events:none;z-index:5;left:0;display:none}
+  .kf-lane{cursor:default}
+
+  .status{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);padding:5px 14px;border-top:0.5px solid var(--border);background:var(--bg);min-height:24px;flex-shrink:0;user-select:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="content-row">
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+        <button class="btn-upload" data-i18n="upload" onclick="document.getElementById('file-in').click()">Subir</button>
+
+        <!-- Parámetros -->
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <div class="ctrl">
+            <div class="ctrl-header">
+              <label data-i18n="points">Puntos</label>
+              <button class="kf-add-btn" data-param="count" onclick="addKF('count')" title="Keyframe">
+                <svg width="10" height="10" viewBox="0 0 10 10"><path class="kf-diamond-fill" d="M5 0L10 5L5 10L0 5Z"/><path class="kf-diamond-stroke" d="M5 0L10 5L5 10L0 5Z" fill="none" stroke-width="1"/></svg>
+              </button>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="sl-count" min="100" max="50000" value="2000" step="100">
+              <span class="slider-val" id="lbl-count">2000</span>
+            </div>
+          </div>
+          <div class="ctrl">
+            <div class="ctrl-header">
+              <label data-i18n="maxr">Radio máx</label>
+              <button class="kf-add-btn" data-param="maxr" onclick="addKF('maxr')" title="Keyframe">
+                <svg width="10" height="10" viewBox="0 0 10 10"><path class="kf-diamond-fill" d="M5 0L10 5L5 10L0 5Z"/><path class="kf-diamond-stroke" d="M5 0L10 5L5 10L0 5Z" fill="none" stroke-width="1"/></svg>
+              </button>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="sl-maxr" min="0.5" max="40" value="10" step="0.5">
+              <span class="slider-val" id="lbl-maxr">10.0</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="ctrl" id="wrap-minr">
+              <div class="ctrl-header">
+                <label data-i18n="minr">Radio mín</label>
+                <button class="kf-add-btn" data-param="minr" onclick="addKF('minr')" title="Keyframe">
+                  <svg width="10" height="10" viewBox="0 0 10 10"><path class="kf-diamond-fill" d="M5 0L10 5L5 10L0 5Z"/><path class="kf-diamond-stroke" d="M5 0L10 5L5 10L0 5Z" fill="none" stroke-width="1"/></svg>
+                </button>
+              </div>
+              <div class="slider-row">
+                <input type="range" id="sl-minr" min="0" max="20" value="0.5" step="0.5">
+                <span class="slider-val" id="lbl-minr">0.5</span>
+              </div>
+            </div>
+            <label class="check-row">
+              <input type="checkbox" id="chk-uniform">
+              <span class="check-box"></span>
+              <span class="label-text" data-i18n="uniform">Tamaño único</span>
+            </label>
+          </div>
+          <div class="ctrl">
+            <div class="ctrl-header">
+              <label data-i18n="contrast">Contraste</label>
+              <button class="kf-add-btn" data-param="gamma" onclick="addKF('gamma')" title="Keyframe">
+                <svg width="10" height="10" viewBox="0 0 10 10"><path class="kf-diamond-fill" d="M5 0L10 5L5 10L0 5Z"/><path class="kf-diamond-stroke" d="M5 0L10 5L5 10L0 5Z" fill="none" stroke-width="1"/></svg>
+              </button>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="sl-gamma" min="0.3" max="4" value="1.2" step="0.05">
+              <span class="slider-val" id="lbl-gamma">1.20</span>
+            </div>
+          </div>
+          <div class="ctrl">
+            <div class="ctrl-header">
+              <label data-i18n="threshold">Threshold</label>
+              <button class="kf-add-btn" data-param="threshold" onclick="addKF('threshold')" title="Keyframe">
+                <svg width="10" height="10" viewBox="0 0 10 10"><path class="kf-diamond-fill" d="M5 0L10 5L5 10L0 5Z"/><path class="kf-diamond-stroke" d="M5 0L10 5L5 10L0 5Z" fill="none" stroke-width="1"/></svg>
+              </button>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="sl-threshold" min="0" max="1" value="1" step="0.01">
+              <span class="slider-val" id="lbl-threshold">1.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modo -->
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <div class="select-wrap">
+            <span class="select-label" data-i18n="order">Orden</span>
+            <div class="select-box">
+              <select id="sel-order">
+                <option value="random" data-i18n-opt="random">Aleatorio</option>
+                <option value="grid" data-i18n-opt="grid">Grilla</option>
+                <option value="scanline" data-i18n-opt="scanline">Scanline</option>
+                <option value="spiral" data-i18n-opt="spiral">Espiral</option>
+                <option value="radial" data-i18n-opt="radial">Radial</option>
+              </select>
+              <span class="select-arrow"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            </div>
+          </div>
+          <div class="select-wrap">
+            <span class="select-label" data-i18n="colormode">Modo de color</span>
+            <div class="select-box">
+              <select id="sel-color">
+                <option value="photo" data-i18n-opt="photo">Foto</option>
+                <option value="bw" data-i18n-opt="bw">B&amp;W density</option>
+                <option value="mono" data-i18n-opt="mono">Monocromo</option>
+                <option value="duotone" data-i18n-opt="duotone">Duotono</option>
+                <option value="flat" data-i18n-opt="flat">Flat</option>
+                <option value="bwsel" data-i18n-opt="bwsel">BW+selected</option>
+                <option value="gradmap" data-i18n-opt="gradmap">Paleta</option>
+              </select>
+              <span class="select-arrow"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            </div>
+          </div>
+          <div id="wrap-duotone" style="display:none;flex-direction:column;gap:8px">
+            <span class="select-label" data-i18n="duotonelabel">Colores</span>
+            <div class="duo-swatches">
+              <div class="duo-swatch" id="duo-swatch-1" style="background:#111111"><input type="color" id="duo-color-1" value="#111111"></div>
+              <div class="duo-swatch" id="duo-swatch-2" style="background:#ffffff"><input type="color" id="duo-color-2" value="#ffffff"></div>
+            </div>
+          </div>
+          <div id="wrap-huesel" style="display:none;flex-direction:column;gap:12px">
+            <div class="hue-grid" id="hue-chips">
+              <label class="check-row hue-chip" data-hue="red"><input type="checkbox" value="red"><span class="check-box"></span><span class="label-text" data-i18n="reds">Rojos</span></label>
+              <label class="check-row hue-chip" data-hue="orange"><input type="checkbox" value="orange" checked><span class="check-box"></span><span class="label-text" data-i18n="oranges">Naranjas</span></label>
+              <label class="check-row hue-chip" data-hue="yellow"><input type="checkbox" value="yellow" checked><span class="check-box"></span><span class="label-text" data-i18n="yellows">Amarillos</span></label>
+              <label class="check-row hue-chip" data-hue="green"><input type="checkbox" value="green" checked><span class="check-box"></span><span class="label-text" data-i18n="greens">Verdes</span></label>
+              <label class="check-row hue-chip" data-hue="cyan"><input type="checkbox" value="cyan" checked><span class="check-box"></span><span class="label-text" data-i18n="cyans">Cyanes</span></label>
+              <label class="check-row hue-chip" data-hue="blue"><input type="checkbox" value="blue"><span class="check-box"></span><span class="label-text" data-i18n="blues">Azules</span></label>
+              <label class="check-row hue-chip" data-hue="magenta"><input type="checkbox" value="magenta" checked><span class="check-box"></span><span class="label-text" data-i18n="magentas">Magentas</span></label>
+            </div>
+            <label class="check-row">
+              <input type="checkbox" id="chk-extract">
+              <span class="check-box"></span>
+              <span class="label-text" data-i18n="disablebw">Desactivar Blanco y Negro</span>
+            </label>
+          </div>
+          <div id="wrap-gradmap" style="display:none;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+              <div id="palette-swatches"></div>
+              <button id="palette-add" data-i18n="addcolor">+ color</button>
+            </div>
+            <p class="pal-hint" data-i18n="palhint">clic para cambiar · clic derecho para eliminar · de oscuro a claro</p>
+          </div>
+        </div>
+
+        <div class="lang-switcher">
+          <button class="lang-btn active" id="lang-esp" onclick="setLang('esp')">ESP</button>
+          <button class="lang-btn" id="lang-eng" onclick="setLang('eng')">ENG</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER CANVAS -->
+    <div class="canvas-area" id="canvas-area">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()">
+        <div class="drop-icon"><img src="https://www.figma.com/api/mcp/asset/42fb386a-c12c-4500-9b97-6a9650fae02e" alt=""></div>
+        <div class="drop-texts">
+          <p class="drop-text" data-i18n="droptext">Soltá o hacé click para subir</p>
+          <p class="drop-sub" data-i18n="dropsub">Imagen (JPG, PNG, WebP) o video (MP4, WebM)</p>
+        </div>
+      </div>
+      <canvas id="out"></canvas>
+    </div>
+
+    <!-- RIGHT EXPORT PANEL -->
+    <aside class="export-panel">
+      <div class="export-btns">
+        <button class="btn-export" onclick="exportPNG()"><img class="btn-export-icon" src="https://www.figma.com/api/mcp/asset/3ff335c4-4c7d-4f15-a8b0-e5c6b9f9eff4" alt="">PNG</button>
+        <button class="btn-export" onclick="exportJPG()"><img class="btn-export-icon" src="https://www.figma.com/api/mcp/asset/3ff335c4-4c7d-4f15-a8b0-e5c6b9f9eff4" alt="">JPG</button>
+        <button class="btn-export" onclick="exportSVG()"><img class="btn-export-icon" src="https://www.figma.com/api/mcp/asset/3ff335c4-4c7d-4f15-a8b0-e5c6b9f9eff4" alt="">SVG</button>
+        <button class="btn-export" id="btn-seq" onclick="exportSequence()"><img class="btn-export-icon" src="https://www.figma.com/api/mcp/asset/3ff335c4-4c7d-4f15-a8b0-e5c6b9f9eff4" alt=""><span data-i18n="sequence">Sequence</span></button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Video seekbar -->
+  <div class="video-bar" id="video-bar">
+    <button class="play-btn" id="btn-play" onclick="togglePlay()">
+      <svg id="icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <svg id="icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+    </button>
+    <span class="vtime" id="vtime-cur">0:00</span>
+    <input type="range" id="vbar-seek" min="0" max="1000" value="0" step="1">
+    <span class="vtime" id="vtime-dur">0:00</span>
+  </div>
+
+  <!-- Keyframe tracks -->
+  <div class="kf-panel" id="kf-panel">
+    <div class="kf-tracks-wrap" id="kf-tracks-wrap" style="position:relative">
+      <div class="kf-global-cursor" id="kf-global-cursor"></div>
+      <div class="kf-row">
+        <span class="kf-row-lbl">pts</span>
+        <div class="kf-row-spacer"></div>
+        <div class="kf-lane" id="kf-lane-count"></div>
+        <div class="kf-spacer-right"></div>
+      </div>
+      <div class="kf-row">
+        <span class="kf-row-lbl">r+</span>
+        <div class="kf-row-spacer"></div>
+        <div class="kf-lane" id="kf-lane-maxr"></div>
+        <div class="kf-spacer-right"></div>
+      </div>
+      <div class="kf-row">
+        <span class="kf-row-lbl">r−</span>
+        <div class="kf-row-spacer"></div>
+        <div class="kf-lane" id="kf-lane-minr"></div>
+        <div class="kf-spacer-right"></div>
+      </div>
+      <div class="kf-row">
+        <span class="kf-row-lbl">con</span>
+        <div class="kf-row-spacer"></div>
+        <div class="kf-lane" id="kf-lane-gamma"></div>
+        <div class="kf-spacer-right"></div>
+      </div>
+      <div class="kf-row">
+        <span class="kf-row-lbl">thr</span>
+        <div class="kf-row-spacer"></div>
+        <div class="kf-lane" id="kf-lane-threshold"></div>
+        <div class="kf-spacer-right"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status" id="status">listo — subí una imagen o video para empezar</div>
+</div>
+
+<canvas id="src" style="display:none"></canvas>
+<video id="srcv" playsinline muted loop crossorigin="anonymous" style="display:none"></video>
+<input type="file" id="file-in" accept="image/*,video/*" style="display:none">
+
+<script>
+// ── i18n ──────────────────────────────────────────────────────────
+const i18n={esp:{upload:'Subir',points:'Puntos',maxr:'Radio máx',minr:'Radio mín',uniform:'Tamaño único',contrast:'Contraste',threshold:'Threshold',order:'Orden',colormode:'Modo de color',duotonelabel:'Colores',reds:'Rojos',oranges:'Naranjas',yellows:'Amarillos',greens:'Verdes',cyans:'Cyanes',blues:'Azules',magentas:'Magentas',disablebw:'Desactivar Blanco y Negro',addcolor:'+ color',palhint:'clic para cambiar · clic derecho para eliminar · de oscuro a claro',random:'Aleatorio',grid:'Grilla',scanline:'Scanline',spiral:'Espiral',radial:'Radial',photo:'Foto',bw:'B&W density',mono:'Monocromo',duotone:'Duotono',flat:'Flat',bwsel:'BW+selected',gradmap:'Paleta',sequence:'Sequence',droptext:'Soltá o hacé click para subir',dropsub:'Imagen (JPG, PNG, WebP) o video (MP4, WebM)',ready:'listo — subí una imagen o video para empezar'},eng:{upload:'Upload',points:'Points',maxr:'Max radius',minr:'Min radius',uniform:'Uniform size',contrast:'Contrast',threshold:'Threshold',order:'Order',colormode:'Color mode',duotonelabel:'Colors',reds:'Reds',oranges:'Oranges',yellows:'Yellows',greens:'Greens',cyans:'Cyans',blues:'Blues',magentas:'Magentas',disablebw:'Disable Black & White',addcolor:'+ color',palhint:'click to change · right-click to remove · dark to light',random:'Random',grid:'Grid',scanline:'Scanline',spiral:'Spiral',radial:'Radial',photo:'Photo',bw:'B&W density',mono:'Monochrome',duotone:'Duotone',flat:'Flat',bwsel:'BW+selected',gradmap:'Palette',sequence:'Sequence',droptext:'Drop or click to upload',dropsub:'Image (JPG, PNG, WebP) or video (MP4, WebM)',ready:'ready — upload an image or video to start'}};
+let currentLang='esp';
+function setLang(lang){currentLang=lang;const tbl=i18n[lang];document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(tbl[k]!==undefined)el.textContent=tbl[k]});document.querySelectorAll('[data-i18n-opt]').forEach(opt=>{const k=opt.getAttribute('data-i18n-opt');if(tbl[k]!==undefined)opt.textContent=tbl[k]});document.getElementById('lang-esp').classList.toggle('active',lang==='esp');document.getElementById('lang-eng').classList.toggle('active',lang==='eng');if(!mediaLoaded)statusEl.textContent=tbl.ready;}
+function tr(k){return i18n[currentLang][k]||k;}
+
+// ── Keyframe system ───────────────────────────────────────────────
+const KF_PARAMS = ['count','maxr','minr','gamma','threshold'];
+const kfs = {count:[],maxr:[],minr:[],gamma:[],threshold:[]};
+const KF_TOL = 1/48;
+const kfSelected = new Set(); // Set of kf objects {t,v}
+
+const sliderIds = {count:'sl-count',maxr:'sl-maxr',minr:'sl-minr',gamma:'sl-gamma',threshold:'sl-threshold'};
+const labelIds  = {count:'lbl-count',maxr:'lbl-maxr',minr:'lbl-minr',gamma:'lbl-gamma',threshold:'lbl-threshold'};
+
+function kfInterp(param, time, fallback){
+  const arr = kfs[param];
+  if(!arr||arr.length===0) return fallback;
+  const sorted = arr.slice().sort((a,b)=>a.t-b.t);
+  if(time<=sorted[0].t) return sorted[0].v;
+  if(time>=sorted[sorted.length-1].t) return sorted[sorted.length-1].v;
+  for(let i=0;i<sorted.length-1;i++){
+    if(time>=sorted[i].t&&time<=sorted[i+1].t){
+      const f=(time-sorted[i].t)/(sorted[i+1].t-sorted[i].t);
+      return sorted[i].v+f*(sorted[i+1].v-sorted[i].v);
+    }
+  }
+  return fallback;
+}
+
+function kfHasAtTime(param, time){
+  return kfs[param].some(k=>Math.abs(k.t-time)<KF_TOL);
+}
+
+// Diamond button: toggle add/remove at current video time
+function addKF(param){
+  if(!isVideo||!mediaLoaded) return;
+  const time = srcV.currentTime;
+  if(kfHasAtTime(param, time)){
+    kfs[param].filter(k=>Math.abs(k.t-time)<KF_TOL).forEach(k=>kfSelected.delete(k));
+    kfs[param] = kfs[param].filter(k=>Math.abs(k.t-time)>=KF_TOL);
+  } else {
+    kfs[param].push({t:time, v:parseFloat(document.getElementById(sliderIds[param]).value)});
+  }
+  renderKFTrack(param);
+  updateKFButtons(time);
+  scheduleRender();
+}
+
+// Auto-KF when slider moves and param already has keyframes
+function insertKF(param, time, value){
+  kfs[param].filter(k=>Math.abs(k.t-time)<KF_TOL).forEach(k=>kfSelected.delete(k));
+  kfs[param] = kfs[param].filter(k=>Math.abs(k.t-time)>=KF_TOL);
+  kfs[param].push({t:time, v:value});
+  renderKFTrack(param);
+  updateKFButtons(time);
+}
+
+function renderKFTrack(param){
+  const lane = document.getElementById('kf-lane-'+param);
+  if(!lane) return;
+  const dur = srcV.duration||1;
+  lane.querySelectorAll('.kf-diamond').forEach(d=>d.remove());
+  kfs[param].forEach(kf=>{
+    const el = document.createElement('div');
+    el.className = 'kf-diamond'+(kfSelected.has(kf)?' selected':'');
+    el.style.left = (kf.t/dur*100)+'%';
+    el.title = kf.v.toFixed(2)+' @ '+kf.t.toFixed(2)+'s';
+    el._kf = kf; el._param = param;
+
+    el.addEventListener('mousedown', e=>{
+      e.stopPropagation(); e.preventDefault();
+      // Select this KF (add to selection if Shift, else replace)
+      if(!kfSelected.has(kf)){ if(!e.shiftKey) kfSelected.clear(); kfSelected.add(kf); renderAllKFTracks(); }
+
+      const laneRect = lane.getBoundingClientRect();
+      const startX = e.clientX;
+      const origTimes = new Map();
+      kfSelected.forEach(k=>origTimes.set(k, k.t));
+      let moved = false;
+
+      function onMove(me){
+        const dx = me.clientX - startX;
+        if(Math.abs(dx)>3) moved = true;
+        if(!moved) return;
+        const dt = (dx/laneRect.width)*dur;
+        kfSelected.forEach(k=>{ const ot=origTimes.get(k); if(ot!==undefined) k.t=Math.max(0,Math.min(dur,ot+dt)); });
+        renderAllKFTracks();
+      }
+      function onUp(){
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+        if(moved){ renderAllKFTracks(); scheduleRender(); }
+        else if(!e.shiftKey){ kfSelected.clear(); kfSelected.add(kf); renderAllKFTracks(); }
+      }
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+    });
+    lane.appendChild(el);
+  });
+}
+
+function renderAllKFTracks(){ KF_PARAMS.forEach(p=>renderKFTrack(p)); }
+
+function updateKFButtons(time){
+  document.querySelectorAll('.kf-add-btn').forEach(btn=>{
+    btn.classList.toggle('kf-active', kfHasAtTime(btn.getAttribute('data-param'),time));
+  });
+}
+
+function updateKFCursor(time){
+  const dur=srcV.duration||1;
+  const cursor=document.getElementById('kf-global-cursor');
+  const wrap=document.getElementById('kf-tracks-wrap');
+  const lane=document.querySelector('.kf-lane');
+  if(!cursor||!lane) return;
+  const laneRect=lane.getBoundingClientRect();
+  const wrapRect=wrap.getBoundingClientRect();
+  cursor.style.left=(laneRect.left-wrapRect.left+laneRect.width*(time/dur))+'px';
+  cursor.style.display='block';
+}
+
+function clearAllKF(){
+  KF_PARAMS.forEach(p=>{ kfs[p].forEach(k=>kfSelected.delete(k)); kfs[p]=[]; renderKFTrack(p); });
+}
+
+function updateSlidersFromKF(time){
+  KF_PARAMS.forEach(param=>{
+    if(kfs[param].length===0) return;
+    const val = kfInterp(param, time, parseFloat(document.getElementById(sliderIds[param]).value));
+    document.getElementById(sliderIds[param]).value = val;
+    const lbl = document.getElementById(labelIds[param]);
+    if(param==='count') lbl.textContent=Math.round(val);
+    else if(param==='gamma'||param==='threshold') lbl.textContent=val.toFixed(2);
+    else lbl.textContent=val.toFixed(1);
+  });
+}
+
+// Box selection + lane click-to-seek + Delete key
+document.addEventListener('DOMContentLoaded',()=>{
+  const wrap = document.getElementById('kf-tracks-wrap');
+  let selBox = null;
+
+  wrap.addEventListener('mousedown', e=>{
+    if(e.target._kf) return; // diamond handles its own mousedown
+    const wrapRect = wrap.getBoundingClientRect();
+    const sx = e.clientX-wrapRect.left, sy = e.clientY-wrapRect.top;
+    let moved = false;
+
+    selBox = document.createElement('div');
+    selBox.className = 'kf-select-box';
+    selBox.style.cssText = `left:${sx}px;top:${sy}px;width:0;height:0`;
+    wrap.appendChild(selBox);
+
+    function onMove(me){
+      const cx=me.clientX-wrapRect.left, cy=me.clientY-wrapRect.top;
+      if(Math.abs(cx-sx)>4||Math.abs(cy-sy)>4) moved=true;
+      if(!moved) return;
+      selBox.style.left=Math.min(sx,cx)+'px'; selBox.style.top=Math.min(sy,cy)+'px';
+      selBox.style.width=Math.abs(cx-sx)+'px'; selBox.style.height=Math.abs(cy-sy)+'px';
+    }
+    function onUp(me){
+      document.removeEventListener('mousemove',onMove);
+      document.removeEventListener('mouseup',onUp);
+      if(selBox){selBox.remove();selBox=null;}
+      if(!moved){
+        // Plain click on empty lane → seek + deselect
+        if(e.target.classList&&e.target.classList.contains('kf-lane')&&srcV.duration){
+          const r=e.target.getBoundingClientRect();
+          srcV.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*srcV.duration;
+          scheduleRender();
+        }
+        if(!e.shiftKey){kfSelected.clear();renderAllKFTracks();}
+      } else {
+        // Box selection
+        const cx=me.clientX-wrapRect.left, cy=me.clientY-wrapRect.top;
+        const l=Math.min(sx,cx),r=Math.max(sx,cx),t=Math.min(sy,cy),b=Math.max(sy,cy);
+        if(!e.shiftKey) kfSelected.clear();
+        wrap.querySelectorAll('.kf-diamond').forEach(d=>{
+          if(!d._kf) return;
+          const dr=d.getBoundingClientRect();
+          const dcx=dr.left+dr.width/2-wrapRect.left, dcy=dr.top+dr.height/2-wrapRect.top;
+          if(dcx>=l&&dcx<=r&&dcy>=t&&dcy<=b) kfSelected.add(d._kf);
+        });
+        renderAllKFTracks();
+      }
+    }
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+  });
+
+  let kfClipboard = []; // [{param, dt, v}] — dt relative to earliest copied KF
+
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Delete'||e.key==='Backspace'){
+      if(kfSelected.size===0) return;
+      e.preventDefault();
+      kfSelected.forEach(kfObj=>{
+        KF_PARAMS.forEach(p=>{ const i=kfs[p].indexOf(kfObj); if(i>=0) kfs[p].splice(i,1); });
+      });
+      kfSelected.clear();
+      renderAllKFTracks();
+      if(isVideo&&mediaLoaded) updateKFButtons(srcV.currentTime);
+      scheduleRender();
+    } else if(e.key==='c'&&(e.ctrlKey||e.metaKey)){
+      if(kfSelected.size===0) return;
+      e.preventDefault();
+      // Find earliest time among selected KFs
+      let minT = Infinity;
+      kfSelected.forEach(k=>{ if(k.t<minT) minT=k.t; });
+      kfClipboard = [];
+      kfSelected.forEach(kfObj=>{
+        let param = null;
+        KF_PARAMS.forEach(p=>{ if(kfs[p].includes(kfObj)) param=p; });
+        if(param) kfClipboard.push({param, dt: kfObj.t-minT, v: kfObj.v});
+      });
+    } else if(e.key==='v'&&(e.ctrlKey||e.metaKey)){
+      if(kfClipboard.length===0||!isVideo||!mediaLoaded) return;
+      e.preventDefault();
+      const pasteT = srcV.currentTime;
+      kfSelected.clear();
+      kfClipboard.forEach(entry=>{
+        const t = pasteT + entry.dt;
+        if(t<0||t>srcV.duration) return;
+        // Remove any existing KF at this time for this param
+        kfs[entry.param].filter(k=>Math.abs(k.t-t)<KF_TOL).forEach(k=>kfSelected.delete(k));
+        kfs[entry.param] = kfs[entry.param].filter(k=>Math.abs(k.t-t)>=KF_TOL);
+        const newKf = {t, v: entry.v};
+        kfs[entry.param].push(newKf);
+        kfSelected.add(newKf);
+      });
+      renderAllKFTracks();
+      updateKFButtons(srcV.currentTime);
+      scheduleRender();
+    }
+  });
+});
+
+// ── Core ──────────────────────────────────────────────────────────
+const outC=document.getElementById('out'),srcC=document.getElementById('src'),srcV=document.getElementById('srcv');
+const dropZ=document.getElementById('drop-zone'),statusEl=document.getElementById('status'),fileIn=document.getElementById('file-in');
+const wrapMinR=document.getElementById('wrap-minr'),area=document.getElementById('canvas-area'),chkUniform=document.getElementById('chk-uniform');
+let mediaLoaded=false,isVideo=false,videoLoop=null,renderPending=false;
+let lastDots=[],lastW=0,lastH=0,lastBg='#ffffff';
+
+function getV(id){return parseFloat(document.getElementById(id).value);}
+
+// Always reads from slider (sliders are kept in sync with KF interpolation on seek)
+function getParam(param){
+  return parseFloat(document.getElementById(sliderIds[param]).value);
+}
+
+function sliderInput(param, formatFn){
+  return e=>{
+    const val = parseFloat(e.target.value);
+    document.getElementById(labelIds[param]).textContent = formatFn(val);
+    // Auto-insert KF if this param already has keyframes
+    if(isVideo && mediaLoaded && kfs[param].length>0){
+      insertKF(param, srcV.currentTime, val);
+    }
+    scheduleRender();
+  };
+}
+document.getElementById('sl-count').addEventListener('input', sliderInput('count', v=>Math.round(v)));
+document.getElementById('sl-maxr').addEventListener('input', sliderInput('maxr', v=>v.toFixed(1)));
+document.getElementById('sl-minr').addEventListener('input', sliderInput('minr', v=>v.toFixed(1)));
+document.getElementById('sl-gamma').addEventListener('input', sliderInput('gamma', v=>v.toFixed(2)));
+document.getElementById('sl-threshold').addEventListener('input', sliderInput('threshold', v=>v.toFixed(2)));
+document.getElementById('sel-order').addEventListener('change',scheduleRender);
+document.getElementById('sel-color').addEventListener('change',()=>{
+  const v=document.getElementById('sel-color').value;
+  document.getElementById('wrap-huesel').style.display=v==='bwsel'?'flex':'none';
+  document.getElementById('wrap-gradmap').style.display=v==='gradmap'?'flex':'none';
+  document.getElementById('wrap-duotone').style.display=v==='duotone'?'flex':'none';
+  scheduleRender();
+});
+chkUniform.addEventListener('change',()=>{wrapMinR.style.opacity=chkUniform.checked?'0.3':'1';scheduleRender();});
+document.getElementById('chk-extract').addEventListener('change',scheduleRender);
+document.getElementById('duo-color-1').addEventListener('input',e=>{document.getElementById('duo-swatch-1').style.background=e.target.value;scheduleRender();});
+document.getElementById('duo-color-2').addEventListener('input',e=>{document.getElementById('duo-swatch-2').style.background=e.target.value;scheduleRender();});
+
+document.querySelectorAll('.hue-chip').forEach(chip=>{
+  const cb=chip.querySelector('input[type=checkbox]');
+  function sync(){chip.classList.toggle('active',cb.checked);}
+  sync();
+  chip.addEventListener('click',e=>{e.preventDefault();cb.checked=!cb.checked;sync();scheduleRender();});
+});
+function getSelectedHues(){const sel=[];document.querySelectorAll('#hue-chips input[type=checkbox]').forEach(cb=>{if(cb.checked)sel.push(cb.value);});return sel;}
+
+function hueFamily(r,g,b){const rn=r/255,gn=g/255,bn=b/255,max=Math.max(rn,gn,bn),min=Math.min(rn,gn,bn),d=max-min;if(d<0.12)return null;if(max===0||d/max<0.2)return null;let h=0;if(max===rn)h=((gn-bn)/d+6)%6*60;else if(max===gn)h=((bn-rn)/d+2)*60;else h=((rn-gn)/d+4)*60;if(h<18||h>=342)return 'red';if(h<45)return 'orange';if(h<75)return 'yellow';if(h<165)return 'green';if(h<195)return 'cyan';if(h<255)return 'blue';if(h<315)return 'magenta';return 'red';}
+
+function scheduleRender(){if(!mediaLoaded)return;if(!renderPending){renderPending=true;requestAnimationFrame(()=>{renderPending=false;if(isVideo)updateSlidersFromKF(srcV.currentTime);render();if(isVideo)updateVideoUI();});}}
+
+fileIn.addEventListener('change',e=>{const f=e.target.files[0];if(f){loadFile(f);fileIn.value='';}});
+area.addEventListener('dragover',e=>e.preventDefault());
+area.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)loadFile(f);});
+
+function loadFile(f){
+  if(videoLoop){cancelAnimationFrame(videoLoop);videoLoop=null;}
+  clearAllKF();
+  const url=URL.createObjectURL(f);
+  isVideo=f.type.startsWith('video');
+  if(isVideo){
+    srcV.src=url;
+    srcV.onloadeddata=()=>{
+      mediaLoaded=true;showCanvas();startVideoLoop();
+      statusEl.textContent='video — '+srcV.videoWidth+'×'+srcV.videoHeight+'px';
+      document.getElementById('sidebar').classList.add('video-loaded');
+      document.getElementById('kf-panel').classList.add('visible');
+    };
+    srcV.load();srcV.play().catch(()=>{});
+  } else {
+    document.getElementById('video-bar').classList.remove('visible');
+    document.getElementById('kf-panel').classList.remove('visible');
+    document.getElementById('sidebar').classList.remove('video-loaded');
+    const img=new Image();
+    img.onload=()=>{srcC.width=img.naturalWidth;srcC.height=img.naturalHeight;srcC.getContext('2d').drawImage(img,0,0);mediaLoaded=true;showCanvas();render();statusEl.textContent='imagen — '+img.naturalWidth+'×'+img.naturalHeight+'px';};
+    img.src=url;
+  }
+}
+
+function hexToRgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function rgbToHex(r,g,b){return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');}
+function brightness(r,g,b){return (r*0.299+g*0.587+b*0.114)/255;}
+function samplePixel(data,x,y,w,h){const px=Math.min(w-1,Math.max(0,Math.round(x))),py=Math.min(h-1,Math.max(0,Math.round(y))),i=(py*w+px)*4;return [data[i],data[i+1],data[i+2]];}
+function buildDensityField(data,w,h,gamma,threshold){const field=new Float32Array(w*h);for(let i=0;i<w*h;i++){const idx=i*4,br=brightness(data[idx],data[idx+1],data[idx+2]);field[i]=br>threshold?0:Math.pow(1-br,gamma);}return field;}
+function sampleByDensity(field,w,h,count){const cum=new Float32Array(field.length);cum[0]=field[0];for(let i=1;i<field.length;i++)cum[i]=cum[i-1]+field[i];const total=cum[cum.length-1];if(total===0)return [];const pts=[];for(let n=0;n<count;n++){const r=Math.random()*total;let lo=0,hi=cum.length-1;while(lo<hi){const mid=(lo+hi)>>1;if(cum[mid]<r)lo=mid+1;else hi=mid;}pts.push([lo%w+Math.random(),Math.floor(lo/w)+Math.random()]);}return pts;}
+
+function render(){
+  const srcEl=isVideo?srcV:srcC,sw=isVideo?srcV.videoWidth:srcC.width,sh=isVideo?srcV.videoHeight:srcC.height;
+  if(!sw||!sh)return;
+  if(isVideo){srcC.width=sw;srcC.height=sh;srcC.getContext('2d').drawImage(srcEl,0,0,sw,sh);}
+  const imgData=srcC.getContext('2d').getImageData(0,0,sw,sh).data;
+  const count=Math.round(getParam('count')),maxR=getParam('maxr'),minR=getParam('minr'),gamma=getParam('gamma'),threshold=getParam('threshold');
+  const order=document.getElementById('sel-order').value,cmode=document.getElementById('sel-color').value;
+  const uniform=chkUniform.checked,dotHex='#111111',bgHex='#ffffff',bgRgb=[255,255,255];
+  outC.width=sw;outC.height=sh;
+  const ctx=outC.getContext('2d');ctx.fillStyle=bgHex;ctx.fillRect(0,0,sw,sh);
+  lastDots=[];lastW=sw;lastH=sh;lastBg=bgHex;
+
+  if(cmode==='gradmap'){
+    const field=buildDensityField(imgData,sw,sh,gamma,threshold),pts=sampleByDensity(field,sw,sh,count);
+    for(const [px,py] of pts){const [r,g,b]=samplePixel(imgData,px,py,sw,sh),fill=paletteSample(brightness(r,g,b));ctx.beginPath();ctx.arc(px,py,maxR,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();lastDots.push({x:+px.toFixed(2),y:+py.toFixed(2),r:maxR,fill});}
+  } else if(cmode==='bw'||cmode==='bwsel'){
+    const field=buildDensityField(imgData,sw,sh,gamma,threshold),pts=sampleByDensity(field,sw,sh,count);
+    if(cmode==='bw'){ctx.fillStyle=dotHex;for(const [px,py] of pts){ctx.beginPath();ctx.arc(px,py,maxR,0,Math.PI*2);ctx.fill();lastDots.push({x:+px.toFixed(2),y:+py.toFixed(2),r:maxR,fill:dotHex});}}
+    else{const selHues=getSelectedHues(),extractOnly=document.getElementById('chk-extract').checked;for(const [px,py] of pts){const [r,g,b]=samplePixel(imgData,px,py,sw,sh),fam=hueFamily(r,g,b),isMatch=fam&&selHues.includes(fam);if(extractOnly&&!isMatch)continue;const fill=isMatch?rgbToHex(r,g,b):dotHex;ctx.beginPath();ctx.arc(px,py,maxR,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();lastDots.push({x:+px.toFixed(2),y:+py.toFixed(2),r:maxR,fill});}}
+  } else {
+    const pts=generatePoints(count,sw,sh,order);
+    const [dotRgb,dot2Rgb]=cmode==='duotone'?[hexToRgb(document.getElementById('duo-color-1').value),hexToRgb(document.getElementById('duo-color-2').value)]:[[17,17,17],[17,17,17]];
+    for(const [px,py] of pts){const [r,g,b]=samplePixel(imgData,px,py,sw,sh),br=brightness(r,g,b);if(br>threshold)continue;const brAdj=Math.pow(br,gamma),radius=uniform?maxR:minR+(maxR-minR)*(1-brAdj);if(radius<0.15)continue;let fill;if(cmode==='photo')fill=rgbToHex(r,g,b);else if(cmode==='mono')fill=rgbToHex(Math.round(dotRgb[0]*(1-brAdj)+bgRgb[0]*brAdj),Math.round(dotRgb[1]*(1-brAdj)+bgRgb[1]*brAdj),Math.round(dotRgb[2]*(1-brAdj)+bgRgb[2]*brAdj));else if(cmode==='duotone'){const t=brAdj;fill=rgbToHex(Math.round(dotRgb[0]*(1-t)+dot2Rgb[0]*t),Math.round(dotRgb[1]*(1-t)+dot2Rgb[1]*t),Math.round(dotRgb[2]*(1-t)+dot2Rgb[2]*t));}else fill=dotHex;ctx.beginPath();ctx.arc(px,py,radius,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();lastDots.push({x:+px.toFixed(2),y:+py.toFixed(2),r:+radius.toFixed(2),fill});}
+  }
+  statusEl.textContent=lastDots.length.toLocaleString()+' pts · t='+threshold.toFixed(2)+(uniform?' · r='+maxR:'');
+}
+
+function generatePoints(count,w,h,order){const pts=[],cx=w/2,cy=h/2;if(order==='random'){for(let i=0;i<count;i++)pts.push([Math.random()*w,Math.random()*h]);}else if(order==='grid'){const cols=Math.ceil(Math.sqrt(count*w/h)),rows=Math.ceil(count/cols),dx=w/cols,dy=h/rows;outer:for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){if(pts.length>=count)break outer;pts.push([c*dx+dx/2,r*dy+dy/2]);}}else if(order==='scanline'){const cols=Math.ceil(Math.sqrt(count*w/h)),rows=Math.ceil(count/cols),dx=w/cols,dy=h/rows;outer2:for(let r=0;r<rows;r++){const off=(r%2===1)?dx*0.5:0;for(let c=0;c<cols;c++){if(pts.length>=count)break outer2;pts.push([c*dx+dx/2+off,r*dy+dy/2]);}}}else if(order==='spiral'){const turns=Math.sqrt(count)*2,maxRad=Math.min(cx,cy)*0.98;for(let i=0;i<count;i++){const ti=i/count,a=ti*turns*Math.PI*2,rad=Math.sqrt(ti)*maxRad;pts.push([cx+Math.cos(a)*rad,cy+Math.sin(a)*rad]);}}else if(order==='radial'){const rings=Math.ceil(Math.sqrt(count/Math.PI))+1,maxRad=Math.min(cx,cy)*0.98;let placed=0;for(let ri=1;ri<=rings&&placed<count;ri++){const r=(ri/rings)*maxRad,n=Math.max(6,Math.round(2*Math.PI*r/(maxRad/rings)));for(let j=0;j<n&&placed<count;j++){const a=(j/n)*Math.PI*2+ri*0.37;pts.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r]);placed++;}}for(;placed<count;placed++)pts.push([Math.random()*w,Math.random()*h]);}return pts;}
+
+function exportPNG(){if(!mediaLoaded||!lastDots.length)return;const tmp=document.createElement('canvas');tmp.width=lastW;tmp.height=lastH;const tctx=tmp.getContext('2d');for(const d of lastDots){tctx.beginPath();tctx.arc(d.x,d.y,d.r,0,Math.PI*2);tctx.fillStyle=d.fill;tctx.fill();}const a=document.createElement('a');a.download='stipple.png';a.href=tmp.toDataURL('image/png');a.click();}
+function exportJPG(){if(!mediaLoaded||!lastDots.length)return;const tmp=document.createElement('canvas');tmp.width=lastW;tmp.height=lastH;const tctx=tmp.getContext('2d');tctx.fillStyle='#fff';tctx.fillRect(0,0,lastW,lastH);for(const d of lastDots){tctx.beginPath();tctx.arc(d.x,d.y,d.r,0,Math.PI*2);tctx.fillStyle=d.fill;tctx.fill();}const a=document.createElement('a');a.download='stipple.jpg';a.href=tmp.toDataURL('image/jpeg',.92);a.click();}
+function exportSVG(){if(!lastDots.length){alert(currentLang==='esp'?'Renderizá primero.':'Render first.');return;}const byColor={};for(const d of lastDots){if(!byColor[d.fill])byColor[d.fill]=[];byColor[d.fill].push(d);}const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${lastW}" height="${lastH}" viewBox="0 0 ${lastW} ${lastH}">`,`<rect width="${lastW}" height="${lastH}" fill="${lastBg}"/>`];for(const[color,dots]of Object.entries(byColor)){parts.push(`<g fill="${color}">`);for(const d of dots)parts.push(`<circle cx="${d.x}" cy="${d.y}" r="${d.r}"/>`);parts.push('</g>');}parts.push('</svg>');const svgStr=parts.join('');const blob=new Blob([svgStr],{type:'image/svg+xml'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.download='stipple.svg';a.href=url;a.click();URL.revokeObjectURL(url);statusEl.textContent='SVG — '+lastDots.length.toLocaleString()+' círculos · '+(svgStr.length/1024).toFixed(0)+' KB';}
+
+async function exportSequence(){
+  if(!isVideo||!mediaLoaded){alert(currentLang==='esp'?'Cargá un video primero.':'Load a video first.');return;}
+  if(!window.JSZip){await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+  const wasPaused=srcV.paused;srcV.pause();
+  const dur=srcV.duration,fps=24,total=Math.floor(dur*fps);
+  const zip=new JSZip(),tmp=document.createElement('canvas');
+  const sw=srcV.videoWidth,sh=srcV.videoHeight;tmp.width=sw;tmp.height=sh;
+  const tctx=tmp.getContext('2d');
+  const order=document.getElementById('sel-order').value,cmode=document.getElementById('sel-color').value;
+  const uniform=chkUniform.checked,dotHex='#111111',selHues=getSelectedHues();
+  const extractOnly=document.getElementById('chk-extract').checked;
+  const bgRgb=[255,255,255];
+  for(let f=0;f<total;f++){
+    const T=f/fps;
+    srcV.currentTime=T;
+    await new Promise(res=>{srcV.onseeked=res;});
+    srcC.width=sw;srcC.height=sh;srcC.getContext('2d').drawImage(srcV,0,0,sw,sh);
+    const imgData=srcC.getContext('2d').getImageData(0,0,sw,sh).data;
+    tctx.clearRect(0,0,sw,sh);
+    updateSlidersFromKF(T);
+    const count=Math.round(getParam('count')),maxR=getParam('maxr'),minR=getParam('minr'),gamma=getParam('gamma'),threshold=getParam('threshold');
+    let pts;
+    if(cmode==='bw'||cmode==='bwsel'||cmode==='gradmap'){const field=buildDensityField(imgData,sw,sh,gamma,threshold);pts=sampleByDensity(field,sw,sh,count);}
+    else pts=generatePoints(count,sw,sh,order);
+    const [duoRgb1,duoRgb2]=cmode==='duotone'?[hexToRgb(document.getElementById('duo-color-1').value),hexToRgb(document.getElementById('duo-color-2').value)]:[[17,17,17],[17,17,17]];
+    for(const[px,py]of pts){
+      const[r,g,b]=samplePixel(imgData,px,py,sw,sh),br=brightness(r,g,b);
+      if(cmode!=='bw'&&cmode!=='bwsel'&&cmode!=='gradmap'&&br>threshold)continue;
+      let fill;
+      if(cmode==='gradmap')fill=paletteSample(br);
+      else if(cmode==='photo')fill=rgbToHex(r,g,b);
+      else if(cmode==='bwsel'){const fam=hueFamily(r,g,b),isMatch=fam&&selHues.includes(fam);if(extractOnly&&!isMatch)continue;fill=isMatch?rgbToHex(r,g,b):dotHex;}
+      else if(cmode==='duotone'){const t=Math.pow(br,gamma);fill=rgbToHex(Math.round(duoRgb1[0]*(1-t)+duoRgb2[0]*t),Math.round(duoRgb1[1]*(1-t)+duoRgb2[1]*t),Math.round(duoRgb1[2]*(1-t)+duoRgb2[2]*t));}
+      else fill=dotHex;
+      tctx.beginPath();tctx.arc(px,py,maxR,0,Math.PI*2);tctx.fillStyle=fill;tctx.fill();
+    }
+    const b64=tmp.toDataURL('image/png').split(',')[1];
+    zip.file(`frame_${String(f).padStart(5,'0')}.png`,b64,{base64:true});
+    statusEl.textContent=(tr('exporting')||'exportando')+' '+(f+1)+'/'+total;
+    if(f%10===0)await new Promise(res=>setTimeout(res,0));
+  }
+  statusEl.textContent='generando ZIP…';
+  const blob=await zip.generateAsync({type:'blob'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.download='stipple_sequence.zip';a.href=url;a.click();
+  URL.revokeObjectURL(url);
+  if(!wasPaused)srcV.play();
+  statusEl.textContent=(tr('seqdone')||'exportado')+' — '+total+' frames';
+}
+
+function showCanvas(){dropZ.style.display='none';outC.style.display='block';}
+
+function startVideoLoop(){
+  document.getElementById('video-bar').classList.add('visible');
+  updateVideoUI();
+  function loop(){updateSlidersFromKF(srcV.currentTime);render();updateVideoUI();if(!srcV.paused){videoLoop=requestAnimationFrame(loop);}else{videoLoop=null;}}
+  videoLoop=requestAnimationFrame(loop);
+}
+function togglePlay(){
+  if(srcV.paused){srcV.play();function loop(){updateSlidersFromKF(srcV.currentTime);render();updateVideoUI();if(!srcV.paused){videoLoop=requestAnimationFrame(loop);}else{videoLoop=null;}}videoLoop=requestAnimationFrame(loop);}
+  else{srcV.pause();}
+  updateVideoUI();
+}
+function fmtTime(s){if(!isFinite(s)||s<0)s=0;const m=Math.floor(s/60);return m+':'+(Math.floor(s%60)+'').padStart(2,'0');}
+function updateVideoUI(){
+  const paused=srcV.paused;
+  document.getElementById('icon-play').style.display=paused?'':'none';
+  document.getElementById('icon-pause').style.display=paused?'none':'';
+  const dur=srcV.duration||0,cur=srcV.currentTime||0;
+  document.getElementById('vtime-cur').textContent=fmtTime(cur);
+  document.getElementById('vtime-dur').textContent=fmtTime(dur);
+  const seek=document.getElementById('vbar-seek');
+  if(!seek._dragging)seek.value=dur?Math.round((cur/dur)*1000):0;
+  updateKFButtons(cur);
+  updateKFCursor(cur);
+}
+const seekEl=document.getElementById('vbar-seek');
+seekEl.addEventListener('mousedown',()=>{seekEl._dragging=true;});
+seekEl.addEventListener('touchstart',()=>{seekEl._dragging=true;},{passive:true});
+seekEl.addEventListener('input',()=>{if(srcV.duration){srcV.currentTime=(seekEl.value/1000)*srcV.duration;scheduleRender();}});
+seekEl.addEventListener('mouseup',()=>{seekEl._dragging=false;});
+seekEl.addEventListener('touchend',()=>{seekEl._dragging=false;});
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&isVideo&&mediaLoaded){e.preventDefault();togglePlay();}});
+
+// ── Paleta ───────────────────────────────────────────────────────
+let paletteColors=['#000000','#555555','#aaaaaa','#ffffff'];
+function paletteSample(br){const n=paletteColors.length;return paletteColors[Math.min(n-1,Math.floor(br*n))];}
+function paletteRender(){const container=document.getElementById('palette-swatches');container.innerHTML='';paletteColors.forEach((col,idx)=>{const wrap=document.createElement('div');wrap.style.cssText='position:relative;width:28px;height:28px;border-radius:4px;border:0.5px solid #454545;overflow:hidden;flex-shrink:0;cursor:pointer';wrap.style.background=col;const inp=document.createElement('input');inp.type='color';inp.value=col;inp.style.cssText='position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:none;';inp.addEventListener('input',e=>{paletteColors[idx]=e.target.value;wrap.style.background=e.target.value;scheduleRender();});wrap.appendChild(inp);wrap.addEventListener('contextmenu',e=>{e.preventDefault();if(paletteColors.length>1){paletteColors.splice(idx,1);paletteRender();scheduleRender();}});container.appendChild(wrap);});}
+document.getElementById('palette-add').addEventListener('click',()=>{paletteColors.push(paletteColors[paletteColors.length-1]);paletteRender();scheduleRender();});
+paletteRender();
+</script>
+</body>
+</html>
