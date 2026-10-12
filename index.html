@@ -46,7 +46,8 @@
   .content-row{display:flex;flex-direction:row;flex:1;overflow:hidden;min-height:0}
 
   /* ── Sidebar ── */
-  .sidebar{width:336px;flex-shrink:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;padding:48px 0;border-right:1px solid var(--line-default);background:var(--surface-default)}
+  .sidebar{width:336px;flex-shrink:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;padding:48px 0;border-left:1px solid var(--line-default);background:var(--surface-default);order:2}
+
   .sidebar-inner{display:flex;flex-direction:column;gap:48px;width:240px}
   .btn-upload{width:100%;height:32px;padding:0 12px;background:var(--fill-inverse);color:var(--content-inverse);border:none;border-radius:8px;font-family:var(--font-sans);font-size:12px;font-weight:500;cursor:pointer;text-align:center;transition:opacity .15s}
   .btn-upload:hover{opacity:.85}
@@ -108,7 +109,7 @@
   .lang-btn.active{color:var(--content-primary);font-weight:500}
 
   /* ── Canvas ── */
-  .canvas-area{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--surface-subtle)}
+  .canvas-area{flex:1;order:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--surface-subtle)}
   .drop-zone{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;cursor:pointer}
   .drop-icon{color:var(--content-muted);opacity:.6}
   .drop-texts{display:flex;flex-direction:column;gap:6px;text-align:center}
@@ -118,11 +119,12 @@
   canvas#src{display:none}
   video#srcv{display:none}
 
-  /* ── Export panel ── */
-  .export-panel{width:220px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:48px 32px;border-left:1px solid var(--line-default);background:var(--surface-default)}
-  .export-btns{display:flex;flex-direction:column;gap:8px;width:100%}
-  .btn-export{display:flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 12px;background:var(--fill-strong);color:var(--content-primary);border:1px solid var(--line-default);border-radius:8px;font-family:var(--font-sans);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .15s}
-  .btn-export:hover{background:var(--content-extra-muted)}
+  /* ── Export pill bar ── */
+  .export-pill-bar{display:flex;align-items:center;justify-content:center;padding:10px 0;border-top:1px solid var(--line-default);background:var(--surface-default);flex-shrink:0}
+  .export-pills-track{position:relative;display:flex;background:var(--fill-strong);border-radius:10px;padding:4px}
+  .export-pill-indicator{position:absolute;top:4px;bottom:4px;background:var(--surface-default);border-radius:7px;box-shadow:0 1px 3px rgba(0,0,0,0.12);transition:left .22s cubic-bezier(0.4,0,0.2,1),width .22s cubic-bezier(0.4,0,0.2,1);pointer-events:none;z-index:0}
+  .export-pill{position:relative;z-index:1;display:flex;align-items:center;gap:6px;padding:0 12px;height:32px;background:transparent;border:none;border-radius:7px;font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--content-secondary);cursor:pointer;white-space:nowrap;transition:color .15s}
+  .export-pill.active{color:var(--content-primary)}
 
   /* ── Bottom bar ── */
   .video-bar{display:none;align-items:center;gap:8px;padding:6px 14px;border-top:1px solid var(--line-default);background:var(--surface-default);flex-shrink:0}
@@ -157,7 +159,7 @@
 <body>
 <div class="app">
   <div class="content-row">
-    <!-- LEFT SIDEBAR -->
+    <!-- LEFT CANVAS -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-inner">
         <button class="btn-upload" data-i18n="upload" onclick="document.getElementById('file-in').click()">Subir</button>
@@ -302,7 +304,7 @@
       </div>
     </aside>
 
-    <!-- CENTER CANVAS -->
+    <!-- CANVAS (right of sidebar = flex order after it, so sidebar is on right via CSS order) -->
     <div class="canvas-area" id="canvas-area">
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()">
         <div class="drop-icon"><svg width="48" height="48" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 10.5V2.5M4.5 6 8 2.5 11.5 6M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg></div>
@@ -313,16 +315,25 @@
       </div>
       <canvas id="out"></canvas>
     </div>
+  </div>
 
-    <!-- RIGHT EXPORT PANEL -->
-    <aside class="export-panel">
-      <div class="export-btns">
-        <button class="btn-export" onclick="exportPNG()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>PNG</button>
-        <button class="btn-export" onclick="exportJPG()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>JPG</button>
-        <button class="btn-export" onclick="exportSVG()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>SVG</button>
-        <button class="btn-export" id="btn-seq" onclick="exportSequence()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg><span data-i18n="sequence">Sequence</span></button>
-      </div>
-    </aside>
+  <!-- Export pill bar -->
+  <div class="export-pill-bar">
+    <div class="export-pills-track" id="export-pills-track">
+      <div class="export-pill-indicator" id="export-pill-indicator"></div>
+      <button class="export-pill active" id="pill-png" onclick="selectAndExport('png')" aria-label="Export PNG">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>PNG
+      </button>
+      <button class="export-pill" id="pill-jpg" onclick="selectAndExport('jpg')" aria-label="Export JPG">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>JPG
+      </button>
+      <button class="export-pill" id="pill-svg" onclick="selectAndExport('svg')" aria-label="Export SVG">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>SVG
+      </button>
+      <button class="export-pill" id="pill-seq" onclick="selectAndExport('seq')" aria-label="Export Sequence">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg><span data-i18n="sequence">Sequence</span>
+      </button>
+    </div>
   </div>
 
   <!-- Video seekbar -->
@@ -695,6 +706,28 @@ document.getElementById('sel-color').addEventListener('change',()=>{
 });
 chkUniform.addEventListener('change',()=>{wrapMinR.style.opacity=chkUniform.checked?'1':'0.3';scheduleRender();});
 wrapMinR.style.opacity='0.3'; // starts unchecked = uniform = minR dimmed
+
+// ── Export pills ──
+function updatePillIndicator(pillEl){
+  const track=document.getElementById('export-pills-track');
+  const ind=document.getElementById('export-pill-indicator');
+  if(!track||!ind||!pillEl)return;
+  const tr=track.getBoundingClientRect(), pr=pillEl.getBoundingClientRect();
+  ind.style.left=(pr.left-tr.left)+'px';
+  ind.style.width=pr.width+'px';
+}
+function selectAndExport(fmt){
+  document.querySelectorAll('.export-pill').forEach(p=>p.classList.remove('active'));
+  const pill=document.getElementById('pill-'+fmt);
+  if(pill){pill.classList.add('active');updatePillIndicator(pill);}
+  if(fmt==='png')exportPNG();
+  else if(fmt==='jpg')exportJPG();
+  else if(fmt==='svg')exportSVG();
+  else if(fmt==='seq')exportSequence();
+}
+function initPillIndicator(){updatePillIndicator(document.getElementById('pill-png'));}
+document.addEventListener('DOMContentLoaded',initPillIndicator);
+window.addEventListener('load',initPillIndicator);
 document.getElementById('chk-extract').addEventListener('change',scheduleRender);
 document.getElementById('duo-color-1').addEventListener('input',e=>{document.getElementById('duo-swatch-1').style.background=e.target.value;scheduleRender();});
 document.getElementById('duo-color-2').addEventListener('input',e=>{document.getElementById('duo-swatch-2').style.background=e.target.value;scheduleRender();});
