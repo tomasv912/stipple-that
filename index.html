@@ -121,9 +121,10 @@
 
   /* ── Export pills (inside sidebar) ── */
   .export-pills-track{position:relative;display:inline-flex;background:var(--fill-strong);border-radius:10px;padding:4px}
-  .export-pill-indicator{position:absolute;top:4px;bottom:4px;background:var(--surface-default);border-radius:7px;box-shadow:0 1px 3px rgba(0,0,0,0.12);transition:left .22s cubic-bezier(0.4,0,0.2,1),width .22s cubic-bezier(0.4,0,0.2,1);pointer-events:none;z-index:0}
-  .export-pill{position:relative;z-index:1;display:flex;align-items:center;gap:6px;padding:0 10px;height:32px;background:transparent;border:none;border-radius:7px;font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--content-secondary);cursor:pointer;white-space:nowrap;transition:color .15s}
-  .export-pill.active{color:var(--content-primary)}
+  .export-pill-indicator{position:absolute;top:4px;bottom:4px;background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.15);transition:left .22s cubic-bezier(0.4,0,0.2,1),width .22s cubic-bezier(0.4,0,0.2,1);pointer-events:none;z-index:0}
+  .export-pill{position:relative;z-index:1;display:flex;align-items:center;padding:0 12px;height:32px;background:var(--surface-default);border:none;border-radius:8px;font-family:var(--font-sans);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap}
+  .export-pill .pill-content{display:flex;align-items:center;gap:6px;opacity:.3;transition:opacity .15s;color:var(--content-primary)}
+  .export-pill.active .pill-content{opacity:1;color:#151515}
 
   /* ── Bottom bar ── */
   .video-bar{display:none;align-items:center;gap:8px;padding:6px 14px;border-top:1px solid var(--line-default);background:var(--surface-default);flex-shrink:0}
@@ -300,16 +301,16 @@
         <div class="export-pills-track" id="export-pills-track">
           <div class="export-pill-indicator" id="export-pill-indicator"></div>
           <button class="export-pill active" id="pill-png" onclick="selectAndExport('png')" aria-label="Export PNG">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>PNG
+            <span class="pill-content"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>PNG</span>
           </button>
           <button class="export-pill" id="pill-jpg" onclick="selectAndExport('jpg')" aria-label="Export JPG">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>JPG
+            <span class="pill-content"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>JPG</span>
           </button>
           <button class="export-pill" id="pill-svg" onclick="selectAndExport('svg')" aria-label="Export SVG">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>SVG
+            <span class="pill-content"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>SVG</span>
           </button>
           <button class="export-pill" id="pill-seq" onclick="selectAndExport('seq')" aria-label="Export Sequence">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg><span data-i18n="sequence">Sequence</span>
+            <span class="pill-content"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg><span data-i18n="sequence">Sequence</span></span>
           </button>
         </div>
 
